@@ -238,7 +238,7 @@
 
   <div class="section-title">
     <span>일일 혈당 추이 그래프</span>
-    <span>단위: mg/dL (목표 70~180)</span>
+    <span>단위: mg/dL (세로선 터치 시 수치 확인)</span>
   </div>
   <div class="chart-box">
     <canvas id="glucoseChart"></canvas>
@@ -280,7 +280,7 @@
   function updateDashboard(records) {
     if (!records.length) return;
 
-    // 정렬 (날짜순)
+    // 날짜 오름차순 정렬
     records.sort((a,b) => a.time - b.time);
 
     const values = records.map(r => r.val);
@@ -290,7 +290,7 @@
     const sum = values.reduce((a,b) => a + b, 0);
     const mean = sum / n;
     
-    // 표준편차 & CV
+    // 표준편차 & 변동계수(CV)
     const variance = values.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / n;
     const sd = Math.sqrt(variance);
     const cv = ((sd / mean) * 100).toFixed(1);
@@ -304,11 +304,11 @@
     const pTir = ((countTir / n) * 100).toFixed(1);
     const pTbr = ((countTbr / n) * 100).toFixed(1);
 
-    // eHbA1c
+    // eHbA1c & LBGI
     const ehba1c = ((mean + 46.7) / 28.7).toFixed(1);
     const lbgi = calcLBGI(values);
 
-    // DOM 갱신
+    // DOM 텍스트 갱신
     const startDate = records[0].time;
     const endDate = records[n - 1].time;
     const formatDate = d => `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
@@ -370,10 +370,11 @@
     }
     document.getElementById('dailyTableBody').innerHTML = tbodyHtml;
 
-    // 차트 그리기
+    // 수직축 터치 개선 차트 렌더링 호출
     renderChart(records);
   }
 
+  // 모바일 터치 개선 차트 렌더링 함수
   function renderChart(records) {
     const ctx = document.getElementById('glucoseChart').getContext('2d');
     if (chartInstance) chartInstance.destroy();
@@ -395,7 +396,9 @@
           borderColor: '#2563eb',
           backgroundColor: 'rgba(37, 99, 235, 0.08)',
           borderWidth: 2,
-          pointRadius: 1.5,
+          pointRadius: 2,
+          pointHoverRadius: 6, // 터치 시 해당 포인트를 시각적으로 확대
+          pointHoverBackgroundColor: '#1d4ed8',
           tension: 0.2,
           fill: true
         }]
@@ -403,8 +406,29 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        // 점을 직접 맞추지 않아도 세로(시간) 축 기준 전체 감지
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
         plugins: {
-          legend: { display: false }
+          legend: { display: false },
+          tooltip: {
+            enabled: true,
+            // 손가락에 가려지지 않도록 팝업 박스를 상단에 표시
+            yAlign: 'bottom',
+            padding: 8,
+            caretPadding: 12,
+            displayColors: false,
+            callbacks: {
+              title: function(items) {
+                return '측정 시간: ' + items[0].label;
+              },
+              label: function(item) {
+                return '혈당 수치: ' + item.parsed.y + ' mg/dL';
+              }
+            }
+          }
         },
         scales: {
           y: {
@@ -457,9 +481,8 @@
     reader.readAsText(file);
   }
 
-  // 초기 9/22 테스트 데이터 자동 탑재
+  // 초기 로드 시 9/22 기본 샘플 데이터 표시
   window.onload = function() {
-    // 9/22 데이터 일부 기본 탑재 (초기 화면 미리보기용)
     const initData = [
       { time: new Date('2026/09/22 16:45:13'), val: 81 },
       { time: new Date('2026/09/22 17:15:13'), val: 117 },
