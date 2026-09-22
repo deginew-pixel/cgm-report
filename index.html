@@ -37,7 +37,7 @@
       background: var(--primary);
       color: #fff;
       border: none;
-      padding: 9px 16px;
+      padding: 9px 14px;
       border-radius: 6px;
       font-size: 13px;
       font-weight: 600;
@@ -49,6 +49,7 @@
     .btn:hover { opacity: 0.9; }
     .btn-secondary { background: #64748b; }
     .btn-save { background: #059669; }
+    .btn-outline { background: #fff; color: #475569; border: 1px solid #cbd5e1; }
 
     /* 리포트 상단 헤더 */
     .header {
@@ -122,7 +123,8 @@
 
     .profile-actions {
       display: flex;
-      justify-content: flex-end;
+      flex-wrap: wrap;
+      justify-content: space-between;
       align-items: center;
       gap: 8px;
       margin-top: 10px;
@@ -222,7 +224,7 @@
     th, td { border: 1px solid var(--border); padding: 8px 4px; }
     th { background: #f1f5f9; color: #475569; }
 
-    /* 인쇄 및 PDF 저장 시의 스타일 */
+    /* 인쇄 및 PDF 저장 시 스타일 */
     @media print {
       body { background: #fff; padding: 0; }
       .container { box-shadow: none; padding: 0; border: none; }
@@ -244,7 +246,7 @@
 <body>
 
 <div class="container">
-  <!-- 파일 업로드 및 액션 컨트롤러 -->
+  <!-- 상단 컨트롤러 -->
   <div class="controls">
     <div>
       <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleFile(event)">
@@ -257,7 +259,7 @@
     </div>
   </div>
 
-  <!-- 리포트 본문 헤더 -->
+  <!-- 헤더 -->
   <div class="header">
     <div>
       <h1>연속혈당측정(CGM) 분석 리포트</h1>
@@ -269,7 +271,7 @@
     </div>
   </div>
 
-  <!-- 프로필 그리드 및 저장 영역 -->
+  <!-- 프로필 입력 및 파일 백업 영역 -->
   <div class="profile-card">
     <div class="profile-grid">
       <!-- 성명 -->
@@ -278,7 +280,7 @@
         <input type="text" id="profName" class="p-input" placeholder="성명 입력" value="">
       </div>
 
-      <!-- 생년월일 (캘린더) -->
+      <!-- 생년월일 -->
       <div class="profile-item">
         <div class="lbl">생년월일</div>
         <input type="date" id="profBirth" class="p-input" value="">
@@ -294,7 +296,7 @@
         </select>
       </div>
 
-      <!-- 신체스펙 (키/몸무게) -->
+      <!-- 신체스펙 -->
       <div class="profile-item">
         <div class="lbl">신체스펙 (키 / 몸무게)</div>
         <div class="body-inputs">
@@ -334,9 +336,17 @@
       </div>
     </div>
 
+    <!-- 로컬 저장 & Download 파일 백업 버튼 모음 -->
     <div class="profile-actions">
-      <span id="saveStatus" style="font-size:11px; color:#059669; font-weight:600;"></span>
-      <button class="btn btn-save" onclick="saveProfileToStorage()">💾 현재 개인정보 및 체중 저장</button>
+      <div>
+        <span id="saveStatus" style="font-size:11px; color:#059669; font-weight:600;"></span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        <button class="btn btn-save" onclick="saveProfileToStorage()">💾 브라우저에 저장</button>
+        <button class="btn btn-outline" onclick="exportProfileToFile()">📥 설정 백업파일 저장 (Download)</button>
+        <input type="file" id="configFile" accept=".json" style="display:none" onchange="importProfileFromFile(event)">
+        <button class="btn btn-outline" onclick="document.getElementById('configFile').click()">📤 백업파일 불러오기</button>
+      </div>
     </div>
   </div>
 
@@ -377,7 +387,6 @@
     </div>
   </div>
 
-  <!-- 일일 혈당 그래프 -->
   <div class="section-title">
     <span>일일 혈당 추이 그래프</span>
     <span>단위: mg/dL (세로선 터치 시 수치 확인)</span>
@@ -387,7 +396,6 @@
     <canvas id="glucoseChart" style="display:none;"></canvas>
   </div>
 
-  <!-- 체중 변동 추이 그래프 (누적 저장 데이터 기반) -->
   <div class="section-title">
     <span>체중 변동 추이 리포트</span>
     <span id="weightStats">저장된 체중 기록을 바탕으로 분석됩니다.</span>
@@ -423,9 +431,9 @@
   let chartInstance = null;
   let weightChartInstance = null;
 
-  // 1. 프로필 로컬 저장 및 로드
-  function saveProfileToStorage() {
-    const profile = {
+  // 1. 프로필 수집 헬퍼
+  function getProfileData() {
+    return {
       name: document.getElementById('profName').value,
       birth: document.getElementById('profBirth').value,
       gender: document.getElementById('profGender').value,
@@ -434,14 +442,16 @@
       type: document.getElementById('profType').value,
       insulin: document.getElementById('profInsulin').value
     };
+  }
+
+  // 2. 브라우저 내부(localStorage) 저장
+  function saveProfileToStorage() {
+    const profile = getProfileData();
     localStorage.setItem('cgm_user_profile', JSON.stringify(profile));
 
-    // 몸무게 히스토리 누적 저장 (오늘 날짜 기준)
     if (profile.weight) {
       const today = new Date().toISOString().slice(0, 10);
       let weightHistory = JSON.parse(localStorage.getItem('cgm_weight_history') || '[]');
-      
-      // 같은 날짜 기록이 있으면 갱신, 없으면 추가
       const existingIdx = weightHistory.findIndex(item => item.date === today);
       if (existingIdx !== -1) {
         weightHistory[existingIdx].weight = parseFloat(profile.weight);
@@ -454,28 +464,100 @@
     }
 
     const status = document.getElementById('saveStatus');
-    status.innerText = '✓ 정보가 성공적으로 저장되었습니다!';
+    status.innerText = '✓ 브라우저에 저장 완료!';
     setTimeout(() => { status.innerText = ''; }, 3000);
+  }
+
+  // 3. Download 폴더로 백업 파일(.json) 내보내기 (위치 선택/다운로드 지원)
+  async function exportProfileToFile() {
+    saveProfileToStorage(); // 먼저 로컬에 저장 반영
+
+    const backupData = {
+      profile: getProfileData(),
+      weightHistory: JSON.parse(localStorage.getItem('cgm_weight_history') || '[]'),
+      exportedAt: new Date().toISOString()
+    };
+    const jsonStr = JSON.stringify(backupData, null, 2);
+
+    // 최신 브라우저: 사용자가 폴더 및 파일명을 직접 지정할 수 있는 API
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: 'cgm_profile_backup.json',
+          types: [{
+            description: 'CGM 설정 백업 파일',
+            accept: { 'application/json': ['.json'] }
+          }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(jsonStr);
+        await writable.close();
+        alert('지정한 위치에 백업 파일이 저장되었습니다.');
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return; // 취소한 경우
+      }
+    }
+
+    // 기본 다운로드 방식: 브라우저 기본 Download 폴더로 자동 저장
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cgm_profile_backup.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    alert('기기의 [다운로드(Download)] 폴더에 cgm_profile_backup.json 파일로 저장되었습니다.');
+  }
+
+  // 4. 백업 파일(.json) 불러와 복원하기
+  function importProfileFromFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      try {
+        const data = JSON.parse(evt.target.result);
+        if (data.profile) {
+          localStorage.setItem('cgm_user_profile', JSON.stringify(data.profile));
+          applyProfileToUI(data.profile);
+        }
+        if (data.weightHistory) {
+          localStorage.setItem('cgm_weight_history', JSON.stringify(data.weightHistory));
+          renderWeightChart();
+        }
+        alert('백업 파일에서 개인정보와 체중 기록을 성공적으로 복원했습니다!');
+      } catch (err) {
+        alert('유효하지 않은 백업 파일입니다.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // 초기화
+  }
+
+  function applyProfileToUI(p) {
+    if (p.name) document.getElementById('profName').value = p.name;
+    if (p.birth) document.getElementById('profBirth').value = p.birth;
+    if (p.gender) document.getElementById('profGender').value = p.gender;
+    if (p.height) document.getElementById('profHeight').value = p.height;
+    if (p.weight) document.getElementById('profWeight').value = p.weight;
+    if (p.type) document.getElementById('profType').value = p.type;
+    if (p.insulin) document.getElementById('profInsulin').value = p.insulin;
   }
 
   function loadProfileFromStorage() {
     const saved = localStorage.getItem('cgm_user_profile');
     if (saved) {
       try {
-        const p = JSON.parse(saved);
-        if (p.name) document.getElementById('profName').value = p.name;
-        if (p.birth) document.getElementById('profBirth').value = p.birth;
-        if (p.gender) document.getElementById('profGender').value = p.gender;
-        if (p.height) document.getElementById('profHeight').value = p.height;
-        if (p.weight) document.getElementById('profWeight').value = p.weight;
-        if (p.type) document.getElementById('profType').value = p.type;
-        if (p.insulin) document.getElementById('profInsulin').value = p.insulin;
+        applyProfileToUI(JSON.parse(saved));
       } catch(e) {}
     }
     renderWeightChart();
   }
 
-  // 체중 기록 초기화
   function resetWeightHistory() {
     if (confirm('저장된 체중 변동 기록을 모두 초기화하시겠습니까?')) {
       localStorage.removeItem('cgm_weight_history');
@@ -483,7 +565,6 @@
     }
   }
 
-  // 체중 차트 렌더링
   function renderWeightChart() {
     const history = JSON.parse(localStorage.getItem('cgm_weight_history') || '[]');
     const placeholder = document.getElementById('weightPlaceholder');
@@ -501,7 +582,7 @@
     placeholder.style.display = 'none';
     canvas.style.display = 'block';
 
-    const labels = history.map(h => h.date.slice(5)); // MM-DD
+    const labels = history.map(h => h.date.slice(5));
     const values = history.map(h => h.weight);
     const maxW = Math.max(...values);
     const minW = Math.min(...values);
@@ -544,7 +625,6 @@
     });
   }
 
-  // LBGI 계산
   function calcLBGI(values) {
     let sum = 0;
     values.forEach(g => {
@@ -555,7 +635,6 @@
     return (sum / values.length).toFixed(1);
   }
 
-  // 대시보드 갱신
   function updateDashboard(records) {
     if (!records.length) return;
 
@@ -611,9 +690,10 @@
 
     const byDay = {};
     records.forEach(r => {
-      const key = `${r.time.getFullYear()}.${String(r.time.getMonth()+1).padStart(2,'0')}.${String(r.time.getDate()).padStart(2,'0')}`;
-      if (!byDay[key]) byDay[key] = [];
-      byDay[key].push(r.val);
+      const key = `${r.time.getFullYear()}.${String(r.time.getMonth()+1).padStart(2,'0')}.${String(r.time.getDate()).padStart(2,'0 daylight')}`.slice(0,10);
+      const dKey = `${r.time.getFullYear()}.${String(r.time.getMonth()+1).padStart(2,'0')}.${String(r.time.getDate()).padStart(2,'0')}`;
+      if (!byDay[dKey]) byDay[dKey] = [];
+      byDay[dKey].push(r.val);
     });
 
     let tbodyHtml = '';
@@ -649,7 +729,6 @@
     renderChart(records);
   }
 
-  // 혈당 차트 렌더링
   function renderChart(records) {
     const ctx = document.getElementById('glucoseChart').getContext('2d');
     if (chartInstance) chartInstance.destroy();
@@ -719,13 +798,11 @@
     });
   }
 
-  // CSV 파싱
   function handleFile(e) {
     const file = e.target.files[0];
     if (!file) return;
     document.getElementById('fileName').innerText = file.name;
 
-    // 저장된 이름이 없는 경우에만 파일명에서 자동 추출 시도
     if (!document.getElementById('profName').value) {
       const nameMatch = file.name.match(/Export_([^_]+)_/);
       if (nameMatch && nameMatch[1]) {
@@ -778,7 +855,6 @@
     reader.readAsText(file);
   }
 
-  // 페이지 로드 시 기존 저장된 프로필 자동 복원
   window.onload = function() {
     loadProfileFromStorage();
   };
