@@ -58,21 +58,33 @@
     .header .sub { font-size: 12px; color: #64748b; margin-top: 4px; }
     .header .brand { font-size: 18px; font-weight: 800; color: var(--primary); text-align: right; }
 
-    /* 프로필 그리드 */
+    /* 프로필 그리드 (직접 터치해 수정 가능) */
     .profile-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
       background: #f8fafc;
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 12px;
+      padding: 10px;
       gap: 8px;
       margin-bottom: 16px;
       font-size: 12px;
     }
     .profile-item { text-align: center; }
     .profile-item .lbl { color: #64748b; font-size: 11px; margin-bottom: 2px; }
-    .profile-item .val { font-weight: 700; color: #1e293b; }
+    .profile-item .val {
+      font-weight: 700;
+      color: #1e293b;
+      outline: none;
+      padding: 2px 4px;
+      border-radius: 4px;
+      display: inline-block;
+      min-width: 40px;
+    }
+    .profile-item .val[contenteditable="true"]:hover {
+      background: #e2e8f0;
+      cursor: text;
+    }
 
     /* 기간 및 건수 요약 */
     .summary-cards {
@@ -153,6 +165,16 @@
       position: relative;
     }
 
+    /* 안내 메시지용 오버레이 */
+    .chart-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
     /* 통계 테이블 */
     table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; margin-bottom: 20px; }
     th, td { border: 1px solid var(--border); padding: 8px 4px; }
@@ -163,6 +185,7 @@
       body { background: #fff; padding: 0; }
       .container { box-shadow: none; padding: 0; border: none; }
       .controls { display: none; }
+      .profile-item .val { border: none !important; }
       @page { size: A4 portrait; margin: 12mm; }
     }
   </style>
@@ -174,8 +197,8 @@
   <div class="controls">
     <div>
       <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleFile(event)">
-      <button class="btn" onclick="document.getElementById('csvFile').click()">📂 바로젠핏 CSV 파일 선택</button>
-      <span id="fileName" style="font-size:12px; color:#475569; margin-left:8px;">기본 테스트 데이터(9/22) 로드됨</span>
+      <button class="btn" onclick="document.getElementById('csvFile').click()">📂 CGM CSV 파일 선택</button>
+      <span id="fileName" style="font-size:12px; color:#475569; margin-left:8px;">CSV 파일을 업로드해 주세요</span>
     </div>
     <button class="btn" style="background:#0f172a;" onclick="window.print()">🖨️ PDF로 저장 / 인쇄</button>
   </div>
@@ -184,7 +207,7 @@
   <div class="header">
     <div>
       <h1>연속혈당측정(CGM) 분석 리포트</h1>
-      <div class="sub" id="deviceInfo">장비: 바로젠 핏 (Barozen Fit) | SN: C1R4T5E03282</div>
+      <div class="sub" id="deviceInfo">장비: - | SN: -</div>
     </div>
     <div class="brand">
       CGM REPORT
@@ -192,18 +215,19 @@
     </div>
   </div>
 
+  <!-- 프로필 그리드: 사용자가 화면에서 직접 탭하여 수정 가능하도록 contenteditable 지원 -->
   <div class="profile-grid">
-    <div class="profile-item"><div class="lbl">성명</div><div class="val">이경호</div></div>
-    <div class="profile-item"><div class="lbl">생년월일</div><div class="val">1976.05.07</div></div>
-    <div class="profile-item"><div class="lbl">성별</div><div class="val">남성</div></div>
-    <div class="profile-item"><div class="lbl">신체스펙</div><div class="val">173.5cm / 84.1kg</div></div>
-    <div class="profile-item"><div class="lbl">당뇨 유형</div><div class="val">제2형 당뇨</div></div>
-    <div class="profile-item"><div class="lbl">인슐린 투여</div><div class="val">투여 안함</div></div>
+    <div class="profile-item"><div class="lbl">성명</div><div class="val" id="profName" contenteditable="true">-</div></div>
+    <div class="profile-item"><div class="lbl">생년월일</div><div class="val" id="profBirth" contenteditable="true">-</div></div>
+    <div class="profile-item"><div class="lbl">성별</div><div class="val" id="profGender" contenteditable="true">-</div></div>
+    <div class="profile-item"><div class="lbl">신체스펙</div><div class="val" id="profBody" contenteditable="true">-</div></div>
+    <div class="profile-item"><div class="lbl">당뇨 유형</div><div class="val" id="profType" contenteditable="true">-</div></div>
+    <div class="profile-item"><div class="lbl">인슐린 투여</div><div class="val" id="profInsulin" contenteditable="true">-</div></div>
   </div>
 
   <div class="summary-cards">
     <div class="scard"><div class="lbl">센서 측정 기간</div><div class="val" id="pPeriod">-</div></div>
-    <div class="scard"><div class="lbl">혈당 기록 비율</div><div class="val" id="pCoverage">100%</div></div>
+    <div class="scard"><div class="lbl">혈당 기록 비율</div><div class="val" id="pCoverage">-</div></div>
     <div class="scard"><div class="lbl">총 측정 횟수</div><div class="val" id="pCount">-</div></div>
   </div>
 
@@ -220,11 +244,13 @@
         <div id="barTbr" class="bar-tbr" style="width:0%"></div>
       </div>
       <div class="tir-legend">
-        <span style="color:var(--tar)">● 고혈당(TAR): <b id="legTar">0%</b></span>
-        <span style="color:var(--tir)">● 목표(TIR): <b id="legTir">0%</b></span>
-        <span style="color:var(--tbr)">● 저혈당(TBR): <b id="legTbr">0%</b></span>
+        <span style="color:var(--tar)">● 고혈당(TAR): <b id="legTar">-</b></span>
+        <span style="color:var(--tir)">● 목표(TIR): <b id="legTir">-</b></span>
+        <span style="color:var(--tbr)">● 저혈당(TBR): <b id="legTbr">-</b></span>
       </div>
-      <div id="tirComment" style="font-size:12px; color:#475569; margin-top:12px; line-height:1.5;"></div>
+      <div id="tirComment" style="font-size:12px; color:#475569; margin-top:12px; line-height:1.5;">
+        CSV 파일을 선택하면 목표 혈당 유지율 및 종합 평가가 표시됩니다.
+      </div>
     </div>
     <div class="metrics-grid">
       <div class="mbox"><div class="title">평균혈당(MBG)</div><div class="val" id="mMean">-</div><div class="sub">mg/dL</div></div>
@@ -240,8 +266,9 @@
     <span>일일 혈당 추이 그래프</span>
     <span>단위: mg/dL (세로선 터치 시 수치 확인)</span>
   </div>
-  <div class="chart-box">
-    <canvas id="glucoseChart"></canvas>
+  <div class="chart-box" id="chartContainer">
+    <div class="chart-placeholder" id="chartPlaceholder">CSV 파일을 불러오면 혈당 그래프가 생성됩니다.</div>
+    <canvas id="glucoseChart" style="display:none;"></canvas>
   </div>
 
   <div class="section-title"><span>일자별 혈당 통계 상세 요약</span></div>
@@ -258,14 +285,18 @@
         <th>저혈당(TBR)</th>
       </tr>
     </thead>
-    <tbody id="dailyTableBody"></tbody>
+    <tbody id="dailyTableBody">
+      <tr>
+        <td colspan="8" style="color:#94a3b8; padding:16px;">데이터가 없습니다. CSV 파일을 선택해 주세요.</td>
+      </tr>
+    </tbody>
   </table>
 </div>
 
 <script>
   let chartInstance = null;
 
-  // LBGI 계산 공식
+  // LBGI 계산 함수
   function calcLBGI(values) {
     let sum = 0;
     values.forEach(g => {
@@ -276,11 +307,10 @@
     return (sum / values.length).toFixed(1);
   }
 
-  // 데이터 렌더링 함수
+  // 데이터 시각화 갱신 함수
   function updateDashboard(records) {
     if (!records.length) return;
 
-    // 날짜 오름차순 정렬
     records.sort((a,b) => a.time - b.time);
 
     const values = records.map(r => r.val);
@@ -290,7 +320,7 @@
     const sum = values.reduce((a,b) => a + b, 0);
     const mean = sum / n;
     
-    // 표준편차 & 변동계수(CV)
+    // 표준편차 & CV
     const variance = values.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / n;
     const sd = Math.sqrt(variance);
     const cv = ((sd / mean) * 100).toFixed(1);
@@ -314,6 +344,7 @@
     const formatDate = d => `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     
     document.getElementById('pPeriod').innerText = `${formatDate(startDate)} ~ ${formatDate(endDate)}`;
+    document.getElementById('pCoverage').innerText = '100%';
     document.getElementById('pCount').innerText = `${n.toLocaleString()}회`;
 
     document.getElementById('barTar').style.width = pTar + '%';
@@ -370,11 +401,13 @@
     }
     document.getElementById('dailyTableBody').innerHTML = tbodyHtml;
 
-    // 수직축 터치 개선 차트 렌더링 호출
+    // 차트 표시 전환
+    document.getElementById('chartPlaceholder').style.display = 'none';
+    document.getElementById('glucoseChart').style.display = 'block';
     renderChart(records);
   }
 
-  // 모바일 터치 개선 차트 렌더링 함수
+  // 모바일 터치 최적화 차트 렌더링
   function renderChart(records) {
     const ctx = document.getElementById('glucoseChart').getContext('2d');
     if (chartInstance) chartInstance.destroy();
@@ -397,7 +430,7 @@
           backgroundColor: 'rgba(37, 99, 235, 0.08)',
           borderWidth: 2,
           pointRadius: 2,
-          pointHoverRadius: 6, // 터치 시 해당 포인트를 시각적으로 확대
+          pointHoverRadius: 6,
           pointHoverBackgroundColor: '#1d4ed8',
           tension: 0.2,
           fill: true
@@ -406,7 +439,6 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        // 점을 직접 맞추지 않아도 세로(시간) 축 기준 전체 감지
         interaction: {
           mode: 'index',
           intersect: false
@@ -415,7 +447,6 @@
           legend: { display: false },
           tooltip: {
             enabled: true,
-            // 손가락에 가려지지 않도록 팝업 박스를 상단에 표시
             yAlign: 'bottom',
             padding: 8,
             caretPadding: 12,
@@ -446,58 +477,65 @@
     });
   }
 
-  // CSV 파싱 핸들러
+  // 파일 파싱 핸들러 (다양한 CSV 헤더 대응)
   function handleFile(e) {
     const file = e.target.files[0];
     if (!file) return;
     document.getElementById('fileName').innerText = file.name;
 
+    // 파일명에서 사용자 이름 감지 (예: BarozenFit_Export_이름_...)
+    const nameMatch = file.name.match(/Export_([^_]+)_/);
+    if (nameMatch && nameMatch[1]) {
+      document.getElementById('profName').innerText = nameMatch[1];
+    }
+
     const reader = new FileReader();
     reader.onload = function(evt) {
       const lines = evt.target.result.split('\n');
+      if (lines.length < 2) return;
+
+      // 헤더 분석 (대소문자/공백 무시)
+      const headerLine = lines[0].replace(/"/g, '').split(',').map(h => h.trim().toLowerCase());
+      
+      let devIdx = headerLine.findIndex(h => h.includes('device') || h.includes('기기'));
+      let snIdx = headerLine.findIndex(h => h.includes('serial') || h.includes('시리얼'));
+      let timeIdx = headerLine.findIndex(h => h.includes('date') || h.includes('time') || h.includes('시간') || h.includes('일시'));
+      let valIdx = headerLine.findIndex(h => h.includes('glucose') || h.includes('혈당') || h.includes('value'));
+
+      // 헤더를 못 찾은 경우 기본 위치(3: 시간, 4: 혈당값) 대체
+      if (timeIdx === -1) timeIdx = 3;
+      if (valIdx === -1) valIdx = 4;
+
       const records = [];
-      let devName = '', serial = '';
+      let detectedDevice = '', detectedSerial = '';
 
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
         const cols = line.split(',');
-        if (cols.length >= 5) {
-          devName = cols[0].replace(/"/g, '').trim();
-          serial = cols[1].replace(/"/g, '').trim();
-          const timeStr = cols[3].replace(/"/g, '').trim();
-          const val = parseFloat(cols[4].replace(/"/g, '').trim());
+
+        if (cols.length > Math.max(timeIdx, valIdx)) {
+          if (devIdx !== -1 && !detectedDevice) detectedDevice = cols[devIdx].replace(/"/g, '').trim();
+          if (snIdx !== -1 && !detectedSerial) detectedSerial = cols[snIdx].replace(/"/g, '').trim();
+
+          const timeStr = cols[timeIdx].replace(/"/g, '').trim();
+          const val = parseFloat(cols[valIdx].replace(/"/g, '').trim());
+
           if (!isNaN(val) && timeStr) {
             records.push({ time: new Date(timeStr.replace(/-/g, '/')), val: val });
           }
         }
       }
 
-      if (devName && serial) {
-        document.getElementById('deviceInfo').innerText = `장비: ${devName} | SN: ${serial}`;
-      }
+      // 기기 정보 갱신 (없으면 공란 유지)
+      const dText = detectedDevice || '-';
+      const sText = detectedSerial || '-';
+      document.getElementById('deviceInfo').innerText = `장비: ${dText} | SN: ${sText}`;
+
       updateDashboard(records);
     };
     reader.readAsText(file);
   }
-
-  // 초기 로드 시 9/22 기본 샘플 데이터 표시
-  window.onload = function() {
-    const initData = [
-      { time: new Date('2026/09/22 16:45:13'), val: 81 },
-      { time: new Date('2026/09/22 17:15:13'), val: 117 },
-      { time: new Date('2026/09/22 17:45:13'), val: 141 },
-      { time: new Date('2026/09/22 18:15:13'), val: 164 },
-      { time: new Date('2026/09/22 18:55:13'), val: 172 },
-      { time: new Date('2026/09/22 19:35:13'), val: 135 },
-      { time: new Date('2026/09/22 20:15:13'), val: 122 },
-      { time: new Date('2026/09/22 21:00:13'), val: 123 },
-      { time: new Date('2026/09/22 22:00:13'), val: 108 },
-      { time: new Date('2026/09/22 22:45:13'), val: 88 },
-      { time: new Date('2026/09/22 23:05:14'), val: 94 }
-    ];
-    updateDashboard(initData);
-  };
 </script>
 
 </body>
