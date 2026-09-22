@@ -29,7 +29,7 @@
       margin-bottom: 24px;
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 10px;
       align-items: center;
       justify-content: space-between;
     }
@@ -37,13 +37,18 @@
       background: var(--primary);
       color: #fff;
       border: none;
-      padding: 10px 18px;
+      padding: 9px 16px;
       border-radius: 6px;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
-    .btn:hover { background: #3046b8; }
+    .btn:hover { opacity: 0.9; }
+    .btn-secondary { background: #64748b; }
+    .btn-save { background: #059669; }
 
     /* 리포트 상단 헤더 */
     .header {
@@ -58,35 +63,74 @@
     .header .sub { font-size: 12px; color: #64748b; margin-top: 4px; }
     .header .brand { font-size: 18px; font-weight: 800; color: var(--primary); text-align: right; }
 
-    /* 프로필 그리드 (직접 터치해 수정 가능) */
-    .profile-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    /* 프로필 그리드 레이아웃 */
+    .profile-card {
       background: #f8fafc;
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 10px;
-      gap: 8px;
+      padding: 12px;
       margin-bottom: 16px;
+    }
+    .profile-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
       font-size: 12px;
     }
-    .profile-item { text-align: center; }
-    .profile-item .lbl { color: #64748b; font-size: 11px; margin-bottom: 2px; }
-    .profile-item .val {
+    .profile-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .profile-item .lbl { color: #64748b; font-size: 11px; margin-bottom: 4px; }
+    
+    .p-input, .p-select {
+      width: 100%;
+      max-width: 130px;
+      text-align: center;
       font-weight: 700;
       color: #1e293b;
+      font-size: 12px;
+      padding: 4px 6px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
       outline: none;
-      padding: 2px 4px;
-      border-radius: 4px;
-      display: inline-block;
-      min-width: 40px;
     }
-    .profile-item .val[contenteditable="true"]:hover {
-      background: #e2e8f0;
-      cursor: text;
+    .p-input:focus, .p-select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.15);
+    }
+    .body-inputs {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      width: 100%;
+    }
+    .body-inputs input {
+      width: 52px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 2px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      outline: none;
     }
 
-    /* 기간 및 건수 요약 */
+    .profile-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
+    }
+
+    /* 요약 카드 */
     .summary-cards {
       display: grid;
       grid-template-columns: 2fr 1fr 1fr;
@@ -164,8 +208,6 @@
       height: 260px;
       position: relative;
     }
-
-    /* 안내 메시지용 오버레이 */
     .chart-placeholder {
       display: flex;
       align-items: center;
@@ -180,12 +222,21 @@
     th, td { border: 1px solid var(--border); padding: 8px 4px; }
     th { background: #f1f5f9; color: #475569; }
 
-    /* 인쇄 전용 스타일 (PDF 저장 규격) */
+    /* 인쇄 및 PDF 저장 시의 스타일 */
     @media print {
       body { background: #fff; padding: 0; }
       .container { box-shadow: none; padding: 0; border: none; }
-      .controls { display: none; }
-      .profile-item .val { border: none !important; }
+      .controls, .profile-actions { display: none !important; }
+      .p-input, .p-select, .body-inputs input {
+        border: none !important;
+        background: transparent !important;
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        padding: 0 !important;
+        font-size: 12px !important;
+        color: #000 !important;
+      }
       @page { size: A4 portrait; margin: 12mm; }
     }
   </style>
@@ -193,17 +244,20 @@
 <body>
 
 <div class="container">
-  <!-- 스마트폰/PC용 파일 선택 컨트롤러 -->
+  <!-- 파일 업로드 및 액션 컨트롤러 -->
   <div class="controls">
     <div>
       <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleFile(event)">
       <button class="btn" onclick="document.getElementById('csvFile').click()">📂 CGM CSV 파일 선택</button>
       <span id="fileName" style="font-size:12px; color:#475569; margin-left:8px;">CSV 파일을 업로드해 주세요</span>
     </div>
-    <button class="btn" style="background:#0f172a;" onclick="window.print()">🖨️ PDF로 저장 / 인쇄</button>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-secondary" onclick="resetWeightHistory()">🗑️ 체중기록 초기화</button>
+      <button class="btn" style="background:#0f172a;" onclick="window.print()">🖨️ PDF로 저장 / 인쇄</button>
+    </div>
   </div>
 
-  <!-- 리포트 본문 -->
+  <!-- 리포트 본문 헤더 -->
   <div class="header">
     <div>
       <h1>연속혈당측정(CGM) 분석 리포트</h1>
@@ -215,14 +269,75 @@
     </div>
   </div>
 
-  <!-- 프로필 그리드: 사용자가 화면에서 직접 탭하여 수정 가능하도록 contenteditable 지원 -->
-  <div class="profile-grid">
-    <div class="profile-item"><div class="lbl">성명</div><div class="val" id="profName" contenteditable="true">-</div></div>
-    <div class="profile-item"><div class="lbl">생년월일</div><div class="val" id="profBirth" contenteditable="true">-</div></div>
-    <div class="profile-item"><div class="lbl">성별</div><div class="val" id="profGender" contenteditable="true">-</div></div>
-    <div class="profile-item"><div class="lbl">신체스펙</div><div class="val" id="profBody" contenteditable="true">-</div></div>
-    <div class="profile-item"><div class="lbl">당뇨 유형</div><div class="val" id="profType" contenteditable="true">-</div></div>
-    <div class="profile-item"><div class="lbl">인슐린 투여</div><div class="val" id="profInsulin" contenteditable="true">-</div></div>
+  <!-- 프로필 그리드 및 저장 영역 -->
+  <div class="profile-card">
+    <div class="profile-grid">
+      <!-- 성명 -->
+      <div class="profile-item">
+        <div class="lbl">성명</div>
+        <input type="text" id="profName" class="p-input" placeholder="성명 입력" value="">
+      </div>
+
+      <!-- 생년월일 (캘린더) -->
+      <div class="profile-item">
+        <div class="lbl">생년월일</div>
+        <input type="date" id="profBirth" class="p-input" value="">
+      </div>
+
+      <!-- 성별 -->
+      <div class="profile-item">
+        <div class="lbl">성별</div>
+        <select id="profGender" class="p-select">
+          <option value="-">- 선택 -</option>
+          <option value="남성">남성</option>
+          <option value="여성">여성</option>
+        </select>
+      </div>
+
+      <!-- 신체스펙 (키/몸무게) -->
+      <div class="profile-item">
+        <div class="lbl">신체스펙 (키 / 몸무게)</div>
+        <div class="body-inputs">
+          <input type="number" id="profHeight" step="0.1" placeholder="cm">
+          <span style="font-size:11px; color:#94a3b8;">cm /</span>
+          <input type="number" id="profWeight" step="0.1" placeholder="kg">
+          <span style="font-size:11px; color:#94a3b8;">kg</span>
+        </div>
+      </div>
+
+      <!-- 당뇨 유형 -->
+      <div class="profile-item">
+        <div class="lbl">당뇨 유형</div>
+        <select id="profType" class="p-select" style="max-width: 140px;">
+          <option value="-">- 선택 -</option>
+          <option value="1형 당뇨병">1형 당뇨병</option>
+          <option value="2형 당뇨병">2형 당뇨병</option>
+          <option value="임신당뇨병">임신당뇨병</option>
+          <option value="당뇨병전단계">당뇨병전단계</option>
+          <option value="고위험군/고령: 1형">고위험군/고령: 1형</option>
+          <option value="고위험군/고령: 2형">고위험군/고령: 2형</option>
+          <option value="임신부: 1형 당뇨병">임신부: 1형 당뇨병</option>
+          <option value="임신부: 2형 당뇨병">임신부: 2형 당뇨병</option>
+          <option value="기타">기타</option>
+          <option value="알 수 없음">알 수 없음</option>
+        </select>
+      </div>
+
+      <!-- 인슐린 투여 -->
+      <div class="profile-item">
+        <div class="lbl">인슐린 투여</div>
+        <select id="profInsulin" class="p-select">
+          <option value="-">- 선택 -</option>
+          <option value="투여 안함">투여 안함</option>
+          <option value="투여 중">투여 중</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="profile-actions">
+      <span id="saveStatus" style="font-size:11px; color:#059669; font-weight:600;"></span>
+      <button class="btn btn-save" onclick="saveProfileToStorage()">💾 현재 개인정보 및 체중 저장</button>
+    </div>
   </div>
 
   <div class="summary-cards">
@@ -262,6 +377,7 @@
     </div>
   </div>
 
+  <!-- 일일 혈당 그래프 -->
   <div class="section-title">
     <span>일일 혈당 추이 그래프</span>
     <span>단위: mg/dL (세로선 터치 시 수치 확인)</span>
@@ -269,6 +385,16 @@
   <div class="chart-box" id="chartContainer">
     <div class="chart-placeholder" id="chartPlaceholder">CSV 파일을 불러오면 혈당 그래프가 생성됩니다.</div>
     <canvas id="glucoseChart" style="display:none;"></canvas>
+  </div>
+
+  <!-- 체중 변동 추이 그래프 (누적 저장 데이터 기반) -->
+  <div class="section-title">
+    <span>체중 변동 추이 리포트</span>
+    <span id="weightStats">저장된 체중 기록을 바탕으로 분석됩니다.</span>
+  </div>
+  <div class="chart-box" style="height: 200px;">
+    <div class="chart-placeholder" id="weightPlaceholder">저장된 체중 기록이 없습니다. 상단에서 체중 입력 후 [저장]을 눌러주세요.</div>
+    <canvas id="weightChart" style="display:none;"></canvas>
   </div>
 
   <div class="section-title"><span>일자별 혈당 통계 상세 요약</span></div>
@@ -295,8 +421,130 @@
 
 <script>
   let chartInstance = null;
+  let weightChartInstance = null;
 
-  // LBGI 계산 함수
+  // 1. 프로필 로컬 저장 및 로드
+  function saveProfileToStorage() {
+    const profile = {
+      name: document.getElementById('profName').value,
+      birth: document.getElementById('profBirth').value,
+      gender: document.getElementById('profGender').value,
+      height: document.getElementById('profHeight').value,
+      weight: document.getElementById('profWeight').value,
+      type: document.getElementById('profType').value,
+      insulin: document.getElementById('profInsulin').value
+    };
+    localStorage.setItem('cgm_user_profile', JSON.stringify(profile));
+
+    // 몸무게 히스토리 누적 저장 (오늘 날짜 기준)
+    if (profile.weight) {
+      const today = new Date().toISOString().slice(0, 10);
+      let weightHistory = JSON.parse(localStorage.getItem('cgm_weight_history') || '[]');
+      
+      // 같은 날짜 기록이 있으면 갱신, 없으면 추가
+      const existingIdx = weightHistory.findIndex(item => item.date === today);
+      if (existingIdx !== -1) {
+        weightHistory[existingIdx].weight = parseFloat(profile.weight);
+      } else {
+        weightHistory.push({ date: today, weight: parseFloat(profile.weight) });
+      }
+      weightHistory.sort((a,b) => new Date(a.date) - new Date(b.date));
+      localStorage.setItem('cgm_weight_history', JSON.stringify(weightHistory));
+      renderWeightChart();
+    }
+
+    const status = document.getElementById('saveStatus');
+    status.innerText = '✓ 정보가 성공적으로 저장되었습니다!';
+    setTimeout(() => { status.innerText = ''; }, 3000);
+  }
+
+  function loadProfileFromStorage() {
+    const saved = localStorage.getItem('cgm_user_profile');
+    if (saved) {
+      try {
+        const p = JSON.parse(saved);
+        if (p.name) document.getElementById('profName').value = p.name;
+        if (p.birth) document.getElementById('profBirth').value = p.birth;
+        if (p.gender) document.getElementById('profGender').value = p.gender;
+        if (p.height) document.getElementById('profHeight').value = p.height;
+        if (p.weight) document.getElementById('profWeight').value = p.weight;
+        if (p.type) document.getElementById('profType').value = p.type;
+        if (p.insulin) document.getElementById('profInsulin').value = p.insulin;
+      } catch(e) {}
+    }
+    renderWeightChart();
+  }
+
+  // 체중 기록 초기화
+  function resetWeightHistory() {
+    if (confirm('저장된 체중 변동 기록을 모두 초기화하시겠습니까?')) {
+      localStorage.removeItem('cgm_weight_history');
+      renderWeightChart();
+    }
+  }
+
+  // 체중 차트 렌더링
+  function renderWeightChart() {
+    const history = JSON.parse(localStorage.getItem('cgm_weight_history') || '[]');
+    const placeholder = document.getElementById('weightPlaceholder');
+    const canvas = document.getElementById('weightChart');
+    const statsEl = document.getElementById('weightStats');
+
+    if (history.length === 0) {
+      placeholder.style.display = 'flex';
+      canvas.style.display = 'none';
+      statsEl.innerText = '저장된 체중 기록을 바탕으로 분석됩니다.';
+      if (weightChartInstance) weightChartInstance.destroy();
+      return;
+    }
+
+    placeholder.style.display = 'none';
+    canvas.style.display = 'block';
+
+    const labels = history.map(h => h.date.slice(5)); // MM-DD
+    const values = history.map(h => h.weight);
+    const maxW = Math.max(...values);
+    const minW = Math.min(...values);
+    statsEl.innerText = `기록 건수: ${values.length}회 | 최고: ${maxW}kg | 최저: ${minW}kg`;
+
+    const ctx = canvas.getContext('2d');
+    if (weightChartInstance) weightChartInstance.destroy();
+
+    weightChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: '체중 (kg)',
+          data: values,
+          borderColor: '#8b5cf6',
+          backgroundColor: 'rgba(139, 92, 246, 0.1)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: '#8b5cf6',
+          tension: 0.1,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            suggestedMin: Math.floor(minW - 2),
+            suggestedMax: Math.ceil(maxW + 2),
+            grid: { color: '#f1f5f9' }
+          },
+          x: { grid: { display: false } }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  }
+
+  // LBGI 계산
   function calcLBGI(values) {
     let sum = 0;
     values.forEach(g => {
@@ -307,7 +555,7 @@
     return (sum / values.length).toFixed(1);
   }
 
-  // 데이터 시각화 갱신 함수
+  // 대시보드 갱신
   function updateDashboard(records) {
     if (!records.length) return;
 
@@ -320,12 +568,10 @@
     const sum = values.reduce((a,b) => a + b, 0);
     const mean = sum / n;
     
-    // 표준편차 & CV
     const variance = values.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / n;
     const sd = Math.sqrt(variance);
     const cv = ((sd / mean) * 100).toFixed(1);
 
-    // TIR, TAR, TBR
     const countTar = values.filter(v => v > 180).length;
     const countTir = values.filter(v => v >= 70 && v <= 180).length;
     const countTbr = values.filter(v => v < 70).length;
@@ -334,11 +580,9 @@
     const pTir = ((countTir / n) * 100).toFixed(1);
     const pTbr = ((countTbr / n) * 100).toFixed(1);
 
-    // eHbA1c & LBGI
     const ehba1c = ((mean + 46.7) / 28.7).toFixed(1);
     const lbgi = calcLBGI(values);
 
-    // DOM 텍스트 갱신
     const startDate = records[0].time;
     const endDate = records[n - 1].time;
     const formatDate = d => `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
@@ -365,7 +609,6 @@
     document.getElementById('tirComment').innerHTML = 
       `목표 혈당 유지율(TIR)은 <b>${pTir}%</b>이며, 혈당 변동성(CV)은 <b>${cv}%</b>로 ${cv < 36 ? '안정적인 변동 폭을 유지하고 있습니다.' : '다소 변동성이 관찰됩니다.'}`;
 
-    // 일자별 그룹화 및 테이블 구성
     const byDay = {};
     records.forEach(r => {
       const key = `${r.time.getFullYear()}.${String(r.time.getMonth()+1).padStart(2,'0')}.${String(r.time.getDate()).padStart(2,'0')}`;
@@ -401,13 +644,12 @@
     }
     document.getElementById('dailyTableBody').innerHTML = tbodyHtml;
 
-    // 차트 표시 전환
     document.getElementById('chartPlaceholder').style.display = 'none';
     document.getElementById('glucoseChart').style.display = 'block';
     renderChart(records);
   }
 
-  // 모바일 터치 최적화 차트 렌더링
+  // 혈당 차트 렌더링
   function renderChart(records) {
     const ctx = document.getElementById('glucoseChart').getContext('2d');
     if (chartInstance) chartInstance.destroy();
@@ -477,16 +719,18 @@
     });
   }
 
-  // 파일 파싱 핸들러 (다양한 CSV 헤더 대응)
+  // CSV 파싱
   function handleFile(e) {
     const file = e.target.files[0];
     if (!file) return;
     document.getElementById('fileName').innerText = file.name;
 
-    // 파일명에서 사용자 이름 감지 (예: BarozenFit_Export_이름_...)
-    const nameMatch = file.name.match(/Export_([^_]+)_/);
-    if (nameMatch && nameMatch[1]) {
-      document.getElementById('profName').innerText = nameMatch[1];
+    // 저장된 이름이 없는 경우에만 파일명에서 자동 추출 시도
+    if (!document.getElementById('profName').value) {
+      const nameMatch = file.name.match(/Export_([^_]+)_/);
+      if (nameMatch && nameMatch[1]) {
+        document.getElementById('profName').value = nameMatch[1];
+      }
     }
 
     const reader = new FileReader();
@@ -494,7 +738,6 @@
       const lines = evt.target.result.split('\n');
       if (lines.length < 2) return;
 
-      // 헤더 분석 (대소문자/공백 무시)
       const headerLine = lines[0].replace(/"/g, '').split(',').map(h => h.trim().toLowerCase());
       
       let devIdx = headerLine.findIndex(h => h.includes('device') || h.includes('기기'));
@@ -502,7 +745,6 @@
       let timeIdx = headerLine.findIndex(h => h.includes('date') || h.includes('time') || h.includes('시간') || h.includes('일시'));
       let valIdx = headerLine.findIndex(h => h.includes('glucose') || h.includes('혈당') || h.includes('value'));
 
-      // 헤더를 못 찾은 경우 기본 위치(3: 시간, 4: 혈당값) 대체
       if (timeIdx === -1) timeIdx = 3;
       if (valIdx === -1) valIdx = 4;
 
@@ -527,7 +769,6 @@
         }
       }
 
-      // 기기 정보 갱신 (없으면 공란 유지)
       const dText = detectedDevice || '-';
       const sText = detectedSerial || '-';
       document.getElementById('deviceInfo').innerText = `장비: ${dText} | SN: ${sText}`;
@@ -536,6 +777,11 @@
     };
     reader.readAsText(file);
   }
+
+  // 페이지 로드 시 기존 저장된 프로필 자동 복원
+  window.onload = function() {
+    loadProfileFromStorage();
+  };
 </script>
 
 </body>
