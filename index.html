@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>연속혈당측정(CGM) 분석 리포트 생성기</title>
-  <!-- 차트 렌더링 라이브러리 -->
+  <!-- 차트 렌더링 라이브러리 및 차트 어노테이션 플러그인 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
   <style>
     :root {
       --primary: #4361ee;
@@ -75,7 +76,7 @@
     }
     .profile-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
       gap: 10px;
       font-size: 12px;
     }
@@ -101,7 +102,7 @@
     }
     .body-inputs { display: flex; align-items: center; justify-content: center; gap: 3px; width: 100%; }
     .body-inputs input {
-      width: 52px;
+      width: 48px;
       text-align: center;
       font-size: 12px;
       font-weight: 700;
@@ -110,6 +111,19 @@
       border-radius: 6px;
       outline: none;
     }
+    .target-inputs { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; }
+    .target-inputs input {
+      width: 46px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 2px;
+      border: 1px solid #94a3b8;
+      border-radius: 6px;
+      outline: none;
+      color: #0f172a;
+    }
+
     .profile-actions {
       display: flex;
       flex-wrap: wrap;
@@ -151,7 +165,7 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
     }
     @media (max-width: 650px) {
       .tir-wrap, .summary-cards { grid-template-columns: 1fr; }
@@ -161,6 +175,28 @@
     .bar-tir { background: var(--tir); }
     .bar-tbr { background: var(--tbr); }
     .tir-legend { display: flex; justify-content: space-between; font-size: 11px; color: #475569; }
+
+    /* 새로 추가된 표준 임상 가이드 박스 */
+    .clinical-guide-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #4361ee;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 11px;
+      line-height: 1.6;
+      color: #475569;
+      margin-bottom: 20px;
+    }
+    .clinical-guide-box strong { color: #1e293b; }
+    .clinical-guide-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .clinical-guide-item { display: flex; align-items: flex-start; gap: 4px; }
+    .guide-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
 
     /* 임상 지표 6종 */
     .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -208,7 +244,7 @@
       border-radius: 0 0 8px 8px;
       padding: 12px;
       margin-bottom: 20px;
-      height: 270px;
+      height: 280px;
       position: relative;
     }
     .chart-placeholder {
@@ -232,7 +268,8 @@
       .container { box-shadow: none; padding: 0; border: none; }
       .controls, .profile-actions, .chart-header-bar { display: none !important; }
       .chart-box { border-radius: 8px; }
-      .p-input, .p-select, .body-inputs input {
+      .clinical-guide-box { border-color: #cbd5e1 !important; background: #fafafa !important; }
+      .p-input, .p-select, .body-inputs input, .target-inputs input {
         border: none !important;
         background: transparent !important;
         appearance: none !important;
@@ -257,7 +294,6 @@
       <span id="fileName" style="font-size:12px; color:#475569; margin-left:8px;">CSV 파일을 업로드해 주세요</span>
     </div>
     <div style="display:flex; flex-wrap:wrap; gap:8px;">
-      <!-- PDF 출력 모드 선택 -->
       <select id="printMode" class="p-select" style="max-width:180px; font-weight:600; font-size:12px;">
         <option value="single">📄 선택한 1일 리포트 출력</option>
         <option value="weekly">📑 최근 7일 주간 리포트 출력</option>
@@ -279,7 +315,7 @@
     </div>
   </div>
 
-  <!-- 프로필 입력 영역 -->
+  <!-- 프로필 및 사용자 설정 영역 -->
   <div class="profile-card">
     <div class="profile-grid">
       <div class="profile-item">
@@ -309,7 +345,7 @@
       </div>
       <div class="profile-item">
         <div class="lbl">당뇨 유형</div>
-        <select id="profType" class="p-select" style="max-width: 140px;">
+        <select id="profType" class="p-select" style="max-width: 130px;">
           <option value="-">- 선택 -</option>
           <option value="1형 당뇨병">1형 당뇨병</option>
           <option value="2형 당뇨병">2형 당뇨병</option>
@@ -330,6 +366,17 @@
           <option value="투여 안함">투여 안함</option>
           <option value="투여 중">투여 중</option>
         </select>
+      </div>
+
+      <!-- 목표 혈당 하한/상한 사용자 설정 필드 -->
+      <div class="profile-item" style="background: #eef2ff; border-radius: 6px; padding: 4px;">
+        <div class="lbl" style="color:#3730a3; font-weight:bold;">목표혈당 (하한~상한)</div>
+        <div class="target-inputs">
+          <input type="number" id="targetLow" value="70" step="5" onchange="onTargetThresholdChange()">
+          <span style="font-size:11px; color:#4338ca; font-weight:bold;">~</span>
+          <input type="number" id="targetHigh" value="180" step="5" onchange="onTargetThresholdChange()">
+          <span style="font-size:10px; color:#6366f1;">mg/dL</span>
+        </div>
       </div>
     </div>
 
@@ -352,9 +399,10 @@
     <div class="scard"><div class="lbl">해당 기간 측정 횟수</div><div class="val" id="pCount">-</div></div>
   </div>
 
+  <!-- TIR 유지율 섹션 -->
   <div class="section-title">
-    <span>나의 목표 혈당 유지율 (TIR)</span>
-    <span>권장: TIR &gt; 70% | TAR &lt; 25% | TBR &lt; 4%</span>
+    <span id="tirHeaderTitle">나의 목표 혈당 유지율 (TIR: 70 ~ 180 mg/dL)</span>
+    <span id="tirCriteriaLabel">국제 표준 가이드라인 (ADA / 대한당뇨병학회)</span>
   </div>
 
   <div class="tir-wrap">
@@ -383,10 +431,38 @@
     </div>
   </div>
 
-  <!-- 일일 혈당 그래프 헤더 & 날짜 네비게이션 컨트롤러 -->
+  <!-- 새로 추가된 [데이터 해석을 위한 표준 임상 참조 가이드] 영역 -->
+  <div class="clinical-guide-box">
+    <div style="font-weight:700; color:#1e293b; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+      <span>💡 CGM 혈당 지표 표준 해석 가이드 (국제 표준 및 대한당뇨병학회 권고안)</span>
+    </div>
+    <div class="clinical-guide-list">
+      <div class="clinical-guide-item">
+        <span class="guide-dot" style="background:var(--tir);"></span>
+        <div><strong>목표 혈당 유지율(TIR): 70% 이상</strong> (70~180 mg/dL, 하루 약 17시간 이상 머무는 것을 권장하며 당화혈색소 약 7.0% 이하에 상응)</div>
+      </div>
+      <div class="clinical-guide-item">
+        <span class="guide-dot" style="background:var(--tar);"></span>
+        <div><strong>고혈당 발생률(TAR): 25% 미만</strong> (180 mg/dL 초과 시간을 하루 6시간 미만으로 조절하여 혈관 합병증 위험 감소)</div>
+      </div>
+      <div class="clinical-guide-item">
+        <span class="guide-dot" style="background:var(--tbr);"></span>
+        <div><strong>저혈당 발생률(TBR): 4% 미만</strong> (70 mg/dL 미만 시간을 하루 1시간 미만으로 억제하여 저혈당 쇼크 예방)</div>
+      </div>
+      <div class="clinical-guide-item">
+        <span class="guide-dot" style="background:#8b5cf6;"></span>
+        <div><strong>혈당 변동성(CV): 36% 미만</strong> (평균 대비 혈당 변동 폭을 나타내며, 36% 이하여야 혈당 스파이크가 적고 안정적임)</div>
+      </div>
+    </div>
+    <div style="margin-top:5px; font-size:10px; color:#64748b; border-top:1px dashed #e2e8f0; padding-top:4px;">
+      * 참고: 임신성 당뇨병은 더 엄격한 63~140 mg/dL을 권장하며, 고령자 및 저혈당 고위험군은 목표치(50% 이상)를 개별 조정할 수 있습니다.
+    </div>
+  </div>
+
+  <!-- 일일 혈당 그래프 헤더 & 날짜 네비게이션 -->
   <div class="section-title">
     <span id="chartSectionTitle">일일 혈당 추이 그래프 (24시간 프로필)</span>
-    <span>단위: mg/dL (자정부터 자정까지)</span>
+    <span id="targetBandLegend" style="color:#059669; font-weight:600;">■ 연두색 음영: 목표 권장 구간</span>
   </div>
 
   <div class="chart-header-bar" id="chartNavBar">
@@ -439,13 +515,31 @@
   let chartInstance = null;
   let weightChartInstance = null;
   
-  // 전체 로드된 데이터 관리 상태 변수
   let allRecords = [];
-  let uniqueDates = []; // YYYY.MM.DD 목록
+  let uniqueDates = [];
   let currentDayIndex = 0;
 
-  // 1. 프로필 관리
+  // 1. 목표 혈당 임계치 읽기
+  function getTargetLimits() {
+    const low = parseFloat(document.getElementById('targetLow').value) || 70;
+    const high = parseFloat(document.getElementById('targetHigh').value) || 180;
+    return { low: low, high: high };
+  }
+
+  function onTargetThresholdChange() {
+    const limits = getTargetLimits();
+    document.getElementById('tirHeaderTitle').innerText = `나의 목표 혈당 유지율 (TIR: ${limits.low} ~ ${limits.high} mg/dL)`;
+    document.getElementById('targetBandLegend').innerText = `■ 연두색 음영: 목표 권장 구간 (${limits.low}~${limits.high})`;
+    
+    if (allRecords.length > 0) {
+      buildDailySummaryTable();
+      displayCurrentDay();
+    }
+  }
+
+  // 2. 프로필 관리
   function getProfileData() {
+    const limits = getTargetLimits();
     return {
       name: document.getElementById('profName').value,
       birth: document.getElementById('profBirth').value,
@@ -453,7 +547,9 @@
       height: document.getElementById('profHeight').value,
       weight: document.getElementById('profWeight').value,
       type: document.getElementById('profType').value,
-      insulin: document.getElementById('profInsulin').value
+      insulin: document.getElementById('profInsulin').value,
+      targetLow: limits.low,
+      targetHigh: limits.high
     };
   }
 
@@ -530,7 +626,8 @@
           localStorage.setItem('cgm_weight_history', JSON.stringify(data.weightHistory));
           renderWeightChart();
         }
-        alert('백업 파일에서 개인정보와 체중 기록을 복원했습니다!');
+        onTargetThresholdChange();
+        alert('백업 파일에서 개인정보와 목표 혈당 설정을 복원했습니다!');
       } catch (err) { alert('유효하지 않은 백업 파일입니다.'); }
     };
     reader.readAsText(file);
@@ -545,6 +642,8 @@
     if (p.weight) document.getElementById('profWeight').value = p.weight;
     if (p.type) document.getElementById('profType').value = p.type;
     if (p.insulin) document.getElementById('profInsulin').value = p.insulin;
+    if (p.targetLow) document.getElementById('targetLow').value = p.targetLow;
+    if (p.targetHigh) document.getElementById('targetHigh').value = p.targetHigh;
   }
 
   function loadProfileFromStorage() {
@@ -552,6 +651,7 @@
     if (saved) {
       try { applyProfileToUI(JSON.parse(saved)); } catch(e) {}
     }
+    onTargetThresholdChange();
     renderWeightChart();
   }
 
@@ -609,7 +709,6 @@
     });
   }
 
-  // 2. LBGI 계산 공식
   function calcLBGI(values) {
     let sum = 0;
     values.forEach(g => {
@@ -620,8 +719,9 @@
     return (sum / values.length).toFixed(1);
   }
 
-  // 3. 통계 지표 카드 계산 및 화면 출력
+  // 3. 통계 계산
   function computeStats(records, periodLabel) {
+    const limits = getTargetLimits();
     const values = records.map(r => r.val);
     const n = values.length;
     const minVal = Math.min(...values);
@@ -633,9 +733,9 @@
     const sd = Math.sqrt(variance);
     const cv = ((sd / mean) * 100).toFixed(1);
 
-    const countTar = values.filter(v => v > 180).length;
-    const countTir = values.filter(v => v >= 70 && v <= 180).length;
-    const countTbr = values.filter(v => v < 70).length;
+    const countTar = values.filter(v => v > limits.high).length;
+    const countTir = values.filter(v => v >= limits.low && v <= limits.high).length;
+    const countTbr = values.filter(v => v < limits.low).length;
 
     const pTar = ((countTar / n) * 100).toFixed(1);
     const pTir = ((countTir / n) * 100).toFixed(1);
@@ -664,10 +764,10 @@
     document.getElementById('mLBGI').innerText = lbgi;
 
     document.getElementById('tirComment').innerHTML = 
-      `목표 혈당 유지율(TIR)은 <b>${pTir}%</b>이며, 혈당 변동성(CV)은 <b>${cv}%</b>로 ${cv < 36 ? '안정적인 혈당 조절 상태입니다.' : '다소 변동 폭이 관찰됩니다.'}`;
+      `설정 목표 범위(<b>${limits.low}~${limits.high} mg/dL</b>) 내 유지율(TIR)은 <b>${pTir}%</b>이며, 혈당 변동성(CV)은 <b>${cv}%</b>입니다.`;
   }
 
-  // 4. 날짜별 네비게이션 처리
+  // 4. 날짜별 네비게이션
   function displayCurrentDay() {
     if (!uniqueDates.length) return;
 
@@ -676,13 +776,9 @@
     document.getElementById('btnPrevDay').disabled = (currentDayIndex === 0);
     document.getElementById('btnNextDay').disabled = (currentDayIndex === uniqueDates.length - 1);
 
-    // 해당 일자의 레코드 필터링
     const dayRecords = allRecords.filter(r => r.dateStr === targetDate);
-    
-    // 해당 1일 기준 통계 갱신
     computeStats(dayRecords, `${targetDate} (00:00 ~ 24:00)`);
 
-    // 테이블 행 하이라이트
     document.querySelectorAll('#dailyTableBody tr').forEach(row => {
       if (row.getAttribute('data-date') === targetDate) {
         row.classList.add('selected-day');
@@ -691,7 +787,6 @@
       }
     });
 
-    // 24시간 고정 스케일 차트 렌더링
     renderDaily24hChart(dayRecords, targetDate);
   }
 
@@ -712,7 +807,7 @@
     }
   }
 
-  // 5. 24시간 고정 시간축 일일 차트 렌더링 (00시, 06시, 12시, 18시, 24시 표기)
+  // 5. 24시간 차트
   function renderDaily24hChart(records, dateTitle) {
     document.getElementById('chartPlaceholder').style.display = 'none';
     const canvas = document.getElementById('glucoseChart');
@@ -721,7 +816,8 @@
     const ctx = canvas.getContext('2d');
     if (chartInstance) chartInstance.destroy();
 
-    // 데이터를 분 단위(0 ~ 1440분) 좌표로 변환하여 24시간 내 정확한 위치에 렌더링
+    const limits = getTargetLimits();
+
     const points = records.map(r => {
       const mins = r.time.getHours() * 60 + r.time.getMinutes();
       const timeStr = `${String(r.time.getHours()).padStart(2,'0')}:${String(r.time.getMinutes()).padStart(2,'0')}`;
@@ -734,14 +830,14 @@
         datasets: [{
           label: '혈당 수치 (mg/dL)',
           data: points,
-          borderColor: '#2563eb',
-          backgroundColor: 'rgba(37, 99, 235, 0.08)',
-          borderWidth: 2,
+          borderColor: '#1d4ed8',
+          borderWidth: 2.2,
           pointRadius: 2.5,
           pointHoverRadius: 6,
-          pointHoverBackgroundColor: '#1d4ed8',
+          pointBackgroundColor: '#1d4ed8',
           tension: 0.2,
-          fill: true
+          fill: false,
+          zIndex: 10
         }]
       },
       options: {
@@ -768,21 +864,65 @@
                 return '혈당: ' + item.raw.y + ' mg/dL';
               }
             }
+          },
+          annotation: {
+            annotations: {
+              targetBox: {
+                type: 'box',
+                yMin: limits.low,
+                yMax: limits.high,
+                backgroundColor: 'rgba(52, 211, 153, 0.18)',
+                borderWidth: 0,
+                drawTime: 'beforeDatasetsDraw'
+              },
+              targetHighLine: {
+                type: 'line',
+                yMin: limits.high,
+                yMax: limits.high,
+                borderColor: '#f59e0b',
+                borderWidth: 1.2,
+                borderDash: [4, 4],
+                label: {
+                  display: true,
+                  content: `상한 ${limits.high}`,
+                  position: 'start',
+                  backgroundColor: 'rgba(245, 158, 11, 0.85)',
+                  font: { size: 9 },
+                  padding: 2
+                }
+              },
+              targetLowLine: {
+                type: 'line',
+                yMin: limits.low,
+                yMax: limits.low,
+                borderColor: '#ef4444',
+                borderWidth: 1.2,
+                borderDash: [4, 4],
+                label: {
+                  display: true,
+                  content: `하한 ${limits.low}`,
+                  position: 'start',
+                  backgroundColor: 'rgba(239, 68, 68, 0.85)',
+                  font: { size: 9 },
+                  padding: 2
+                }
+              }
+            }
           }
         },
         scales: {
           y: {
-            min: 50,
-            max: 220,
+            min: Math.min(40, limits.low - 10),
+            max: Math.max(220, limits.high + 30),
             ticks: { stepSize: 50 },
             grid: { color: '#f1f5f9' }
           },
           x: {
             type: 'linear',
             min: 0,
-            max: 1440, // 24시간 * 60분
+            max: 1440,
             ticks: {
-              stepSize: 360, // 6시간 간격 (360분)
+              stepSize: 360,
               callback: function(value) {
                 if (value === 0) return '오전 12시';
                 if (value === 360) return '오전 6시';
@@ -799,7 +939,7 @@
     });
   }
 
-  // 6. CSV 로드 및 파싱 처리
+  // 6. CSV 파싱 및 테이블 구축
   function handleFile(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -861,10 +1001,8 @@
       const sText = detectedSerial || '-';
       document.getElementById('deviceInfo').innerText = `장비: ${dText} | SN: ${sText}`;
 
-      // 고유 날짜 추출
       uniqueDates = [...new Set(allRecords.map(r => r.dateStr))];
 
-      // 일자 선택 드롭다운 구성
       const selector = document.getElementById('daySelector');
       selector.innerHTML = '';
       uniqueDates.forEach(d => {
@@ -874,10 +1012,7 @@
         selector.appendChild(opt);
       });
 
-      // 일자별 상세 통계 요약 테이블 생성
       buildDailySummaryTable();
-
-      // 가장 최신 날짜(마지막 날짜)를 기본 활성화
       currentDayIndex = uniqueDates.length - 1;
       displayCurrentDay();
     };
@@ -885,6 +1020,7 @@
   }
 
   function buildDailySummaryTable() {
+    const limits = getTargetLimits();
     const byDay = {};
     allRecords.forEach(r => {
       if (!byDay[r.dateStr]) byDay[r.dateStr] = [];
@@ -900,9 +1036,9 @@
       const dMin = Math.min(...dVals);
       const dVar = dVals.reduce((a,b)=>a+Math.pow(b-dMean,2),0)/dCount;
       const dCV = ((Math.sqrt(dVar)/dMean)*100).toFixed(1);
-      const dTar = ((dVals.filter(v=>v>180).length / dCount)*100).toFixed(1);
-      const dTir = ((dVals.filter(v=>v>=70&&v<=180).length / dCount)*100).toFixed(1);
-      const dTbr = ((dVals.filter(v=>v<70).length / dCount)*100).toFixed(1);
+      const dTar = ((dVals.filter(v=>v>limits.high).length / dCount)*100).toFixed(1);
+      const dTir = ((dVals.filter(v=>v>=limits.low&&v<=limits.high).length / dCount)*100).toFixed(1);
+      const dTbr = ((dVals.filter(v=>v<limits.low).length / dCount)*100).toFixed(1);
 
       tbodyHtml += `
         <tr data-date="${day}" onclick="selectDateFromTable('${day}')" style="cursor:pointer;">
@@ -928,7 +1064,7 @@
     }
   }
 
-  // 7. 출력 모드(1일 vs 최근 7일 vs 전체) 선택 인쇄 트리거
+  // 7. 출력 트리거
   function triggerPrint() {
     if (!allRecords.length) {
       window.print();
@@ -939,12 +1075,10 @@
     const currentTarget = uniqueDates[currentDayIndex];
 
     if (mode === 'single') {
-      // 1일치 모드: 현재 선택된 날짜 기준
       document.getElementById('reportMainTitle').innerText = `연속혈당측정(CGM) 일일 리포트 (${currentTarget})`;
       displayCurrentDay();
       setTimeout(() => { window.print(); }, 200);
     } else if (mode === 'weekly') {
-      // 최근 7일 모드: 현재 선택일 기준 이전 7일 데이터 범위 슬라이싱
       const startIdx = Math.max(0, currentDayIndex - 6);
       const weeklyDates = uniqueDates.slice(startIdx, currentDayIndex + 1);
       const weeklyRecords = allRecords.filter(r => weeklyDates.includes(r.dateStr));
@@ -953,7 +1087,6 @@
       computeStats(weeklyRecords, `${weeklyDates[0]} ~ ${weeklyDates[weeklyDates.length - 1]} (최근 ${weeklyDates.length}일간)`);
       setTimeout(() => { window.print(); }, 200);
     } else {
-      // 전체 기간 모드
       document.getElementById('reportMainTitle').innerText = `연속혈당측정(CGM) 전체 분석 리포트`;
       computeStats(allRecords, `${uniqueDates[0]} ~ ${uniqueDates[uniqueDates.length - 1]} (전체 ${uniqueDates.length}일간)`);
       setTimeout(() => { window.print(); }, 200);
