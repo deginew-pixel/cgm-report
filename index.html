@@ -182,7 +182,6 @@
       .tir-wrap, .summary-cards { grid-template-columns: 1fr; }
     }
     
-    /* PDF 출력 시 배경색 날아감 방지 */
     .tir-bar {
       display: flex;
       height: 22px;
@@ -199,7 +198,7 @@
     .bar-tbr { background-color: #ef4444 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .tir-legend { display: flex; justify-content: space-between; font-size: 11px; color: #475569; }
 
-    /* 표준 임상 가이드 박스 */
+    /* 표준 임상 가이드 박스 (11px 기준) */
     .clinical-guide-box {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
@@ -247,7 +246,7 @@
       color: #fff;
       border: none;
       border-radius: 6px;
-      padding: 5px 10px;
+      padding: 5px 9px;
       font-size: 11px;
       font-weight: 700;
       cursor: pointer;
@@ -266,7 +265,7 @@
       background: #fff;
       border: 1px solid #cbd5e1;
       border-radius: 6px;
-      width: 32px;
+      width: 30px;
       height: 28px;
       display: inline-flex;
       align-items: center;
@@ -279,11 +278,23 @@
     .arrow-btn:disabled { opacity: 0.35; cursor: not-allowed; }
     .arrow-btn:active { background: #e2e8f0; }
 
+    .font-btn {
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #475569;
+      cursor: pointer;
+    }
+    .font-btn:hover { background: #e2e8f0; color: #0f172a; }
+
     .date-select {
       border: 1px solid #cbd5e1;
       border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 12px;
+      padding: 4px 6px;
+      font-size: 11px;
       font-weight: 700;
       color: #0f172a;
       background: #fff;
@@ -307,7 +318,7 @@
       font-size: 13px;
     }
 
-    /* 하단 전용 연속 스크롤/패닝 드래그 바 */
+    /* 하단 전용 연속 스크롤 바 */
     .chart-scroll-track {
       background: #f1f5f9;
       border: 1px solid var(--border);
@@ -331,10 +342,11 @@
       color: var(--primary);
     }
 
-    /* 통계 테이블 */
+    /* 통계 테이블 (단위 상단 분리 스타일) */
     table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; margin-bottom: 20px; }
-    th, td { border: 1px solid var(--border); padding: 8px 4px; }
+    th, td { border: 1px solid var(--border); padding: 7px 4px; }
     th { background: #f1f5f9; color: #475569; }
+    .th-sub { display: block; font-size: 9px; font-weight: normal; color: #64748b; margin-top: 1px; }
     tr.selected-day { background-color: #eff6ff; font-weight: bold; }
 
     /* 인쇄 및 PDF 저장 시 스타일 */
@@ -552,13 +564,17 @@
     <span id="targetBandLegend" style="color:#059669; font-weight:600;">■ 연두색 음영: 목표 권장 구간</span>
   </div>
 
-  <!-- 네비게이션 바 -->
+  <!-- 네비게이션 바 (글자크기 조절 버튼 A-/A+ 추가) -->
   <div class="chart-header-bar" id="chartNavBar">
-    <div>
-      <button class="btn-total-view" onclick="viewChartTotalPeriod()">📊 전체 기간 보기</button>
-    </div>
     <div style="display:flex; align-items:center; gap:6px;">
-      <span style="font-size:12px; font-weight:600; color:#475569;">조회 일자:</span>
+      <button class="btn-total-view" onclick="viewChartTotalPeriod()">📊 전체 기간</button>
+      <div style="display:flex; align-items:center; gap:2px; margin-left:4px;">
+        <button class="font-btn" onclick="adjustChartFontSize(-1)" title="차트 글씨 작게">A -</button>
+        <button class="font-btn" onclick="adjustChartFontSize(1)" title="차트 글씨 크게">A +</button>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:4px;">
+      <span style="font-size:11px; font-weight:600; color:#475569;">조회 일자:</span>
       <select id="daySelector" class="date-select" onchange="onDaySelectChange()"></select>
     </div>
     <div class="nav-arrow-group">
@@ -567,7 +583,7 @@
     </div>
   </div>
 
-  <!-- 차트 영역: 타입 3 (점 완전 제거, 순수 실선 곡선) -->
+  <!-- 차트 영역: 타입 3 (점 완전 제거, 순수 실선) -->
   <div class="chart-box" id="chartContainer">
     <div class="chart-placeholder" id="chartPlaceholder">CSV 파일을 불러오면 혈당 그래프가 생성됩니다.</div>
     <canvas id="glucoseChart" style="display:none;"></canvas>
@@ -592,19 +608,19 @@
     <canvas id="weightChart" style="display:none;"></canvas>
   </div>
 
-  <!-- 일자별 통계 테이블 -->
+  <!-- 일자별 통계 테이블 (상단 헤더에 단위 분리, 하단 셀은 숫자만 표기) -->
   <div class="section-title"><span>일자별 혈당 통계 상세 요약</span></div>
   <table>
     <thead>
       <tr>
         <th>측정 일자</th>
-        <th>측정 횟수</th>
-        <th>평균 혈당</th>
-        <th>최고/최저</th>
-        <th>변동성(CV)</th>
-        <th>고혈당(TAR)</th>
-        <th>목표유지(TIR)</th>
-        <th>저혈당(TBR)</th>
+        <th>측정 횟수<span class="th-sub">(회)</span></th>
+        <th>평균 혈당<span class="th-sub">(mg/dL)</span></th>
+        <th>최고 / 최저<span class="th-sub">(mg/dL)</span></th>
+        <th>변동성 CV<span class="th-sub">(%)</span></th>
+        <th>고혈당 TAR<span class="th-sub">(%)</span></th>
+        <th>목표유지 TIR<span class="th-sub">(%)</span></th>
+        <th>저혈당 TBR<span class="th-sub">(%)</span></th>
       </tr>
     </thead>
     <tbody id="dailyTableBody">
@@ -620,19 +636,64 @@
   let weightChartInstance = null;
   
   let allRecords = [];
-  let uniqueDates = [];
+  let uniqueDates = []; // YYYY.MM.DD 목록
   let currentDayIndex = 0;
   let statsScope = 'day';
+
+  // 차트 폰트 크기 상태 (기본 10px, 조절 범위 8px ~ 13px)
+  let chartFontSize = 10;
 
   let isTrackDragging = false;
   let trackStartX = 0;
   let trackStartMin = 0;
   let trackStartMax = 0;
 
+  const WEEK_DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+  function getDayOfWeek(dateObj) {
+    return WEEK_DAYS[dateObj.getDay()];
+  }
+
+  // 2026을 26으로 변환하여 날짜와 요일 포맷 (예: 26.09.22 (화) 또는 9/22 (화))
+  function formatDateWithDay(dStr, showFullYear = false) {
+    if (!dStr) return '';
+    const dt = new Date(dStr.replace(/\./g, '/') + ' 00:00:00');
+    const dayName = getDayOfWeek(dt);
+    if (showFullYear) {
+      // 2026 -> 26
+      const yy = String(dt.getFullYear()).slice(2);
+      const mm = String(dt.getMonth() + 1).padStart(2, '0');
+      const dd = String(dt.getDate()).padStart(2, '0');
+      return `${yy}.${mm}.${dd} (${dayName})`;
+    }
+    const m = dt.getMonth() + 1;
+    const d = dt.getDate();
+    return `${m}/${d} (${dayName})`;
+  }
+
+  // 차트 폰트 크기 동적 조절 함수 (+/-)
+  function adjustChartFontSize(delta) {
+    chartFontSize = Math.max(8, Math.min(13, chartFontSize + delta));
+    if (chartInstance) {
+      chartInstance.options.scales.x.ticks.font.size = chartFontSize;
+      chartInstance.options.scales.y.ticks.font.size = chartFontSize;
+      chartInstance.update('none');
+    }
+  }
+
   function getTargetLimits() {
     const low = parseFloat(document.getElementById('targetLow').value) || 70;
     const high = parseFloat(document.getElementById('targetHigh').value) || 180;
     return { low: low, high: high };
+  }
+
+  function computeDynamicYMax(records) {
+    const limits = getTargetLimits();
+    if (!records || !records.length) return Math.max(220, limits.high + 30);
+    const maxVal = Math.max(...records.map(r => r.val));
+    const base = Math.max(maxVal, limits.high);
+    const nextTen = Math.ceil((base + 0.1) / 10) * 10;
+    return Math.max(220, nextTen + 10);
   }
 
   function onTargetThresholdChange() {
@@ -676,7 +737,8 @@
 
     if (profile.weight && !isNaN(parseFloat(profile.weight))) {
       const now = new Date();
-      const dateLabel = `${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      const dayName = getDayOfWeek(now);
+      const dateLabel = `${now.getMonth()+1}/${now.getDate()} (${dayName}) ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
       const newWeight = parseFloat(profile.weight);
 
       let weightHistory = JSON.parse(localStorage.getItem('cgm_weight_history') || '[]');
@@ -729,7 +791,9 @@
 
     history = history.map(h => {
       if (h.date && !h.label) {
-        return { timestamp: new Date(h.date).getTime(), label: h.date.slice(5), weight: h.weight };
+        const dt = new Date(h.date);
+        const dayName = getDayOfWeek(dt);
+        return { timestamp: dt.getTime(), label: `${dt.getMonth()+1}/${dt.getDate()} (${dayName})`, weight: h.weight };
       }
       return h;
     });
@@ -792,10 +856,10 @@
           y: {
             suggestedMin: Math.floor(minW - 1),
             suggestedMax: Math.ceil(maxW + 1),
-            ticks: { stepSize: 0.5 },
+            ticks: { stepSize: 0.5, font: { size: 10 } },
             grid: { color: '#f1f5f9' }
           },
-          x: { grid: { display: false }, ticks: { autoSkip: true, maxTicksLimit: 10 } }
+          x: { grid: { display: false }, ticks: { autoSkip: true, maxTicksLimit: 10, font: { size: 10 } } }
         }
       }
     });
@@ -904,14 +968,17 @@
       document.getElementById('lblPeriodTitle').innerText = '조회 대상 기간 (전체 기간 통합)';
       const firstDate = uniqueDates[0];
       const lastDate = uniqueDates[uniqueDates.length - 1];
-      computeStats(allRecords, `${firstDate} ~ ${lastDate} (전체 ${uniqueDates.length}일간)`);
+      const fLabel = formatDateWithDay(firstDate, true);
+      const lLabel = formatDateWithDay(lastDate, true);
+      computeStats(allRecords, `${fLabel} ~ ${lLabel} (전체 ${uniqueDates.length}일간)`);
     } else {
       btn.innerText = '전체 기간 통합 보기';
       btn.style.background = '#eef2ff';
       document.getElementById('lblPeriodTitle').innerText = '조회 대상 기간 (선택 일자)';
       const targetDate = uniqueDates[currentDayIndex];
       const dayRecords = allRecords.filter(r => r.dateStr === targetDate);
-      computeStats(dayRecords, `${targetDate} (00:00 ~ 24:00)`);
+      const dLabel = formatDateWithDay(targetDate, true);
+      computeStats(dayRecords, `${dLabel} (00:00 ~ 24:00)`);
     }
   }
 
@@ -981,10 +1048,13 @@
     updateCurrentStatsView();
 
     if (chartInstance) {
+      const dayRecords = allRecords.filter(r => r.dateStr === targetDate);
       const startOfDay = new Date(targetDate.replace(/\./g, '/') + ' 00:00:00').getTime();
       const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+      
       chartInstance.options.scales.x.min = startOfDay;
       chartInstance.options.scales.x.max = endOfDay;
+      chartInstance.options.scales.y.max = computeDynamicYMax(dayRecords);
       chartInstance.update('none');
     }
   }
@@ -998,6 +1068,7 @@
 
     chartInstance.options.scales.x.min = startMs;
     chartInstance.options.scales.x.max = endMs;
+    chartInstance.options.scales.y.max = computeDynamicYMax(allRecords);
     chartInstance.update('none');
   }
 
@@ -1065,50 +1136,32 @@
     uniqueDates.forEach((dStr, i) => {
       const midnightTime = new Date(dStr.replace(/\./g, '/') + ' 00:00:00').getTime();
       const noonTime = midnightTime + 12 * 60 * 60 * 1000;
-      const shortDate = dStr.slice(5);
 
+      // 자정 실선
       annotations[`midnight_${i}`] = {
         type: 'line',
         xMin: midnightTime,
         xMax: midnightTime,
         borderColor: '#475569',
-        borderWidth: 2,
-        drawTime: 'beforeDatasetsDraw',
-        label: {
-          display: true,
-          content: `📅 ${shortDate} (자정)`,
-          position: 'start',
-          backgroundColor: '#334155',
-          color: '#ffffff',
-          font: { size: 10, weight: 'bold' },
-          padding: 3
-        }
+        borderWidth: 1.8,
+        drawTime: 'beforeDatasetsDraw'
       };
 
+      // 점심 12시 점선
       annotations[`noon_${i}`] = {
         type: 'line',
         xMin: noonTime,
         xMax: noonTime,
         borderColor: '#ea580c',
-        borderWidth: 1.5,
+        borderWidth: 1.2,
         borderDash: [4, 4],
-        drawTime: 'beforeDatasetsDraw',
-        label: {
-          display: true,
-          content: `☀️ ${shortDate} 12시`,
-          position: 'end',
-          backgroundColor: 'rgba(234, 88, 12, 0.85)',
-          color: '#ffffff',
-          font: { size: 9, weight: 'bold' },
-          padding: 2
-        }
+        drawTime: 'beforeDatasetsDraw'
       };
     });
 
     return annotations;
   }
 
-  // 차트 렌더링: pointRadius = 0 (타입 3: 점 완전 제거, 순수 실선)
   function renderContinuousChart() {
     document.getElementById('chartPlaceholder').style.display = 'none';
     const canvas = document.getElementById('glucoseChart');
@@ -1121,12 +1174,14 @@
     const points = allRecords.map(r => ({
       x: r.time.getTime(),
       y: r.val,
-      timeStr: `${r.dateStr.slice(5)} ${String(r.time.getHours()).padStart(2,'0')}:${String(r.time.getMinutes()).padStart(2,'0')}`
+      timeStr: `${formatDateWithDay(r.dateStr, false)} ${String(r.time.getHours()).padStart(2,'0')}:${String(r.time.getMinutes()).padStart(2,'0')}`
     }));
 
     const targetDate = uniqueDates[currentDayIndex];
+    const dayRecords = allRecords.filter(r => r.dateStr === targetDate);
     const startOfDay = new Date(targetDate.replace(/\./g, '/') + ' 00:00:00').getTime();
     const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+    const calculatedYMax = computeDynamicYMax(dayRecords);
 
     chartInstance = new Chart(ctx, {
       type: 'line',
@@ -1136,8 +1191,8 @@
           data: points,
           borderColor: '#1d4ed8',
           borderWidth: 2.0,
-          pointRadius: 0,              // 타입 3: 평상시 점 완전 제거 (순수 실선 곡선)
-          pointHoverRadius: 5.5,        // 손가락 터치 시에만 해당 위치에 강조 점 노출
+          pointRadius: 0,
+          pointHoverRadius: 5.5,
           pointHoverBackgroundColor: '#1d4ed8',
           pointHoverBorderColor: '#ffffff',
           pointHoverBorderWidth: 1.5,
@@ -1170,8 +1225,8 @@
         scales: {
           y: {
             min: Math.min(40, limits.low - 10),
-            max: Math.max(220, limits.high + 30),
-            ticks: { stepSize: 50 },
+            max: calculatedYMax,
+            ticks: { stepSize: 50, font: { size: chartFontSize } },
             grid: { color: '#f1f5f9' }
           },
           x: {
@@ -1180,15 +1235,26 @@
             max: endOfDay,
             ticks: {
               stepSize: 6 * 60 * 60 * 1000,
+              font: { size: chartFontSize },
               callback: function(val) {
                 const d = new Date(val);
                 const h = d.getHours();
                 const m = d.getMinutes();
                 if (m !== 0) return '';
-                if (h === 0) return `${d.getMonth()+1}/${d.getDate()} 00시`;
-                if (h === 6) return '오전 6시';
-                if (h === 12) return '오후 12시';
-                if (h === 18) return '오후 6시';
+
+                const currentRange = (chartInstance ? (chartInstance.options.scales.x.max - chartInstance.options.scales.x.min) : (24 * 3600 * 1000));
+                const isSingleDay = currentRange <= (28 * 60 * 60 * 1000);
+
+                if (h === 0) {
+                  return `${d.getMonth()+1}/${d.getDate()} (${getDayOfWeek(d)})`;
+                }
+
+                if (isSingleDay) {
+                  if (h === 6) return 'AM 6';
+                  if (h === 12) return 'PM 12';
+                  if (h === 18) return 'PM 6';
+                }
+
                 return '';
               }
             },
@@ -1310,7 +1376,7 @@
       uniqueDates.forEach(d => {
         const opt = document.createElement('option');
         opt.value = d;
-        opt.innerText = d;
+        opt.innerText = formatDateWithDay(d, true);
         selector.appendChild(opt);
       });
 
@@ -1323,6 +1389,7 @@
     reader.readAsText(file);
   }
 
+  // 통계 요약표: 하단 셀 숫자만 표기 (단위는 상단 헤더에 위치)
   function buildDailySummaryTable() {
     const limits = getTargetLimits();
     const byDay = {};
@@ -1344,16 +1411,18 @@
       const dTir = ((dVals.filter(v=>v>=limits.low&&v<=limits.high).length / dCount)*100).toFixed(1);
       const dTbr = ((dVals.filter(v=>v<limits.low).length / dCount)*100).toFixed(1);
 
+      const formattedDayWithWeekday = formatDateWithDay(day, true); // 26.09.22 (화)
+
       tbodyHtml += `
         <tr data-date="${day}" onclick="selectDateFromTable('${day}')" style="cursor:pointer;">
-          <td><b>${day}</b></td>
-          <td>${dCount}회</td>
-          <td>${dMean} mg/dL</td>
+          <td><b>${formattedDayWithWeekday}</b></td>
+          <td>${dCount}</td>
+          <td>${dMean}</td>
           <td>${dMax} / ${dMin}</td>
-          <td>${dCV}%</td>
-          <td>${dTar}%</td>
-          <td><span style="color:#2563eb; font-weight:700;">${dTir}%</span></td>
-          <td>${dTbr}%</td>
+          <td>${dCV}</td>
+          <td>${dTar}</td>
+          <td><span style="color:#2563eb; font-weight:700;">${dTir}</span></td>
+          <td>${dTbr}</td>
         </tr>
       `;
     });
@@ -1383,36 +1452,50 @@
 
     let reportTitle = '';
     if (mode === 'single') {
-      reportTitle = `연속혈당측정(CGM) 일일 리포트 (${currentTarget})`;
-      document.title = `CGM_일일리포트_${userName}_${currentTarget.replace(/\./g,'')}_${timeStampStr}`;
+      const dayRecords = allRecords.filter(r => r.dateStr === currentTarget);
+      const formattedTitleDate = formatDateWithDay(currentTarget, true);
+      reportTitle = `연속혈당측정(CGM) 일일 리포트 (${formattedTitleDate})`;
+      document.title = `CGM_일일리포트_${userName}_${currentTarget.replace(/\./g,'').slice(2)}_${timeStampStr}`;
       displayCurrentDay();
+      if (chartInstance) {
+        chartInstance.options.scales.y.max = computeDynamicYMax(dayRecords);
+        chartInstance.update('none');
+      }
     } else if (mode === 'weekly') {
       const startIdx = Math.max(0, currentDayIndex - 6);
       const weeklyDates = uniqueDates.slice(startIdx, currentDayIndex + 1);
       const weeklyRecords = allRecords.filter(r => weeklyDates.includes(r.dateStr));
-      reportTitle = `연속혈당측정(CGM) 주간 리포트 (${weeklyDates[0]} ~ ${weeklyDates[weeklyDates.length - 1]})`;
+      const startLabel = formatDateWithDay(weeklyDates[0], true);
+      const endLabel = formatDateWithDay(weeklyDates[weeklyDates.length - 1], true);
+
+      reportTitle = `연속혈당측정(CGM) 주간 리포트 (${startLabel} ~ ${endLabel})`;
       document.title = `CGM_주간리포트_${userName}_${timeStampStr}`;
-      computeStats(weeklyRecords, `${weeklyDates[0]} ~ ${weeklyDates[weeklyDates.length - 1]} (최근 ${weeklyDates.length}일간)`);
+      computeStats(weeklyRecords, `${startLabel} ~ ${endLabel} (최근 ${weeklyDates.length}일간)`);
 
       if (chartInstance) {
         const startMs = new Date(weeklyDates[0].replace(/\./g, '/') + ' 00:00:00').getTime();
         const endMs = new Date(weeklyDates[weeklyDates.length - 1].replace(/\./g, '/') + ' 00:00:00').getTime() + 24 * 60 * 60 * 1000;
         chartInstance.options.scales.x.min = startMs;
         chartInstance.options.scales.x.max = endMs;
+        chartInstance.options.scales.y.max = computeDynamicYMax(weeklyRecords);
         chartInstance.update('none');
       }
     } else {
       const firstDate = uniqueDates[0];
       const lastDate = uniqueDates[uniqueDates.length - 1];
+      const startLabel = formatDateWithDay(firstDate, true);
+      const endLabel = formatDateWithDay(lastDate, true);
+
       reportTitle = `연속혈당측정(CGM) 전체 분석 리포트`;
       document.title = `CGM_전체리포트_${userName}_${timeStampStr}`;
-      computeStats(allRecords, `${firstDate} ~ ${lastDate} (전체 ${uniqueDates.length}일간)`);
+      computeStats(allRecords, `${startLabel} ~ ${endLabel} (전체 ${uniqueDates.length}일간)`);
 
       if (chartInstance) {
         const startMs = new Date(firstDate.replace(/\./g, '/') + ' 00:00:00').getTime();
         const endMs = new Date(lastDate.replace(/\./g, '/') + ' 00:00:00').getTime() + 24 * 60 * 60 * 1000;
         chartInstance.options.scales.x.min = startMs;
         chartInstance.options.scales.x.max = endMs;
+        chartInstance.options.scales.y.max = computeDynamicYMax(allRecords);
         chartInstance.update('none');
       }
     }
