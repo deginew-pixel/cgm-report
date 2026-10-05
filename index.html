@@ -198,7 +198,7 @@
     .bar-tbr { background-color: #ef4444 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .tir-legend { display: flex; justify-content: space-between; font-size: 11px; color: #475569; }
 
-    /* 표준 임상 가이드 박스 (11px 기준) */
+    /* 표준 임상 가이드 박스 */
     .clinical-guide-box {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
@@ -308,6 +308,7 @@
       padding: 12px;
       height: 280px;
       position: relative;
+      width: 100%;
     }
     .chart-placeholder {
       display: flex;
@@ -342,19 +343,46 @@
       color: var(--primary);
     }
 
-    /* 통계 테이블 (단위 상단 분리 스타일) */
+    /* 통계 테이블 */
     table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; margin-bottom: 20px; }
     th, td { border: 1px solid var(--border); padding: 7px 4px; }
     th { background: #f1f5f9; color: #475569; }
     .th-sub { display: block; font-size: 9px; font-weight: normal; color: #64748b; margin-top: 1px; }
     tr.selected-day { background-color: #eff6ff; font-weight: bold; }
 
-    /* 인쇄 및 PDF 저장 시 스타일 */
+    /* 인쇄 및 PDF 저장 시 스타일: 한 페이지 폭 전체를 꽉 채우도록 여백 최적화 */
     @media print {
-      body { background: #fff; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      .container { box-shadow: none; padding: 0; border: none; }
-      .controls, .profile-actions, .chart-header-bar, .chart-scroll-track, .weight-quick-actions, .toggle-scope-btn { display: none !important; }
-      .chart-box { border-radius: 8px; border-bottom: 1px solid var(--border); }
+      body {
+        background: #fff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .container {
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        max-width: 100% !important;
+        width: 100% !important;
+      }
+      .controls, .profile-actions, .chart-header-bar, .chart-scroll-track, .weight-quick-actions, .toggle-scope-btn {
+        display: none !important;
+      }
+      .chart-box {
+        border-radius: 8px !important;
+        border: 1px solid var(--border) !important;
+        width: 100% !important;
+        padding: 4px 6px !important;
+        box-sizing: border-box !important;
+      }
+      .chart-box canvas {
+        width: 100% !important;
+        max-width: 100% !important;
+        display: block !important;
+      }
       .clinical-guide-box { border-color: #cbd5e1 !important; background: #fafafa !important; }
       .tir-bar { border: 1px solid #94a3b8 !important; }
       .p-input, .p-select, .body-inputs input, .target-inputs input {
@@ -367,7 +395,10 @@
         font-size: 12px !important;
         color: #000 !important;
       }
-      @page { size: A4 portrait; margin: 12mm; }
+      @page {
+        size: auto; /* 가로(Landscape) 및 세로(Portrait) 모드 모두 자동 수용 */
+        margin: 8mm; /* 인쇄 용지 여백을 8mm로 최소화하여 그래프 폭 극대화 */
+      }
     }
   </style>
 </head>
@@ -564,7 +595,7 @@
     <span id="targetBandLegend" style="color:#059669; font-weight:600;">■ 연두색 음영: 목표 권장 구간</span>
   </div>
 
-  <!-- 네비게이션 바 (글자크기 조절 버튼 A-/A+ 추가) -->
+  <!-- 네비게이션 바 -->
   <div class="chart-header-bar" id="chartNavBar">
     <div style="display:flex; align-items:center; gap:6px;">
       <button class="btn-total-view" onclick="viewChartTotalPeriod()">📊 전체 기간</button>
@@ -583,7 +614,7 @@
     </div>
   </div>
 
-  <!-- 차트 영역: 타입 3 (점 완전 제거, 순수 실선) -->
+  <!-- 차트 영역: 폭 100% 밀착 -->
   <div class="chart-box" id="chartContainer">
     <div class="chart-placeholder" id="chartPlaceholder">CSV 파일을 불러오면 혈당 그래프가 생성됩니다.</div>
     <canvas id="glucoseChart" style="display:none;"></canvas>
@@ -608,7 +639,7 @@
     <canvas id="weightChart" style="display:none;"></canvas>
   </div>
 
-  <!-- 일자별 통계 테이블 (상단 헤더에 단위 분리, 하단 셀은 숫자만 표기) -->
+  <!-- 일자별 통계 테이블 -->
   <div class="section-title"><span>일자별 혈당 통계 상세 요약</span></div>
   <table>
     <thead>
@@ -636,11 +667,10 @@
   let weightChartInstance = null;
   
   let allRecords = [];
-  let uniqueDates = []; // YYYY.MM.DD 목록
+  let uniqueDates = [];
   let currentDayIndex = 0;
   let statsScope = 'day';
 
-  // 차트 폰트 크기 상태 (기본 10px, 조절 범위 8px ~ 13px)
   let chartFontSize = 10;
 
   let isTrackDragging = false;
@@ -654,13 +684,11 @@
     return WEEK_DAYS[dateObj.getDay()];
   }
 
-  // 2026을 26으로 변환하여 날짜와 요일 포맷 (예: 26.09.22 (화) 또는 9/22 (화))
   function formatDateWithDay(dStr, showFullYear = false) {
     if (!dStr) return '';
     const dt = new Date(dStr.replace(/\./g, '/') + ' 00:00:00');
     const dayName = getDayOfWeek(dt);
     if (showFullYear) {
-      // 2026 -> 26
       const yy = String(dt.getFullYear()).slice(2);
       const mm = String(dt.getMonth() + 1).padStart(2, '0');
       const dd = String(dt.getDate()).padStart(2, '0');
@@ -671,7 +699,6 @@
     return `${m}/${d} (${dayName})`;
   }
 
-  // 차트 폰트 크기 동적 조절 함수 (+/-)
   function adjustChartFontSize(delta) {
     chartFontSize = Math.max(8, Math.min(13, chartFontSize + delta));
     if (chartInstance) {
@@ -859,7 +886,10 @@
             ticks: { stepSize: 0.5, font: { size: 10 } },
             grid: { color: '#f1f5f9' }
           },
-          x: { grid: { display: false }, ticks: { autoSkip: true, maxTicksLimit: 10, font: { size: 10 } } }
+          x: {
+            grid: { display: false },
+            ticks: { autoSkip: true, maxTicksLimit: 10, font: { size: 10 } }
+          }
         }
       }
     });
@@ -1137,7 +1167,6 @@
       const midnightTime = new Date(dStr.replace(/\./g, '/') + ' 00:00:00').getTime();
       const noonTime = midnightTime + 12 * 60 * 60 * 1000;
 
-      // 자정 실선
       annotations[`midnight_${i}`] = {
         type: 'line',
         xMin: midnightTime,
@@ -1147,7 +1176,6 @@
         drawTime: 'beforeDatasetsDraw'
       };
 
-      // 점심 12시 점선
       annotations[`noon_${i}`] = {
         type: 'line',
         xMin: noonTime,
@@ -1233,6 +1261,7 @@
             type: 'linear',
             min: startOfDay,
             max: endOfDay,
+            bounds: 'ticks',
             ticks: {
               stepSize: 6 * 60 * 60 * 1000,
               font: { size: chartFontSize },
@@ -1389,7 +1418,6 @@
     reader.readAsText(file);
   }
 
-  // 통계 요약표: 하단 셀 숫자만 표기 (단위는 상단 헤더에 위치)
   function buildDailySummaryTable() {
     const limits = getTargetLimits();
     const byDay = {};
@@ -1411,7 +1439,7 @@
       const dTir = ((dVals.filter(v=>v>=limits.low&&v<=limits.high).length / dCount)*100).toFixed(1);
       const dTbr = ((dVals.filter(v=>v<limits.low).length / dCount)*100).toFixed(1);
 
-      const formattedDayWithWeekday = formatDateWithDay(day, true); // 26.09.22 (화)
+      const formattedDayWithWeekday = formatDateWithDay(day, true);
 
       tbodyHtml += `
         <tr data-date="${day}" onclick="selectDateFromTable('${day}')" style="cursor:pointer;">
@@ -1437,6 +1465,7 @@
     }
   }
 
+  // PDF 출력 시 페이지 가로폭 전체로 캔버스 리사이징 및 인쇄
   function triggerPrint() {
     const now = new Date();
     const yy = String(now.getFullYear()).slice(2);
@@ -1459,7 +1488,6 @@
       displayCurrentDay();
       if (chartInstance) {
         chartInstance.options.scales.y.max = computeDynamicYMax(dayRecords);
-        chartInstance.update('none');
       }
     } else if (mode === 'weekly') {
       const startIdx = Math.max(0, currentDayIndex - 6);
@@ -1478,7 +1506,6 @@
         chartInstance.options.scales.x.min = startMs;
         chartInstance.options.scales.x.max = endMs;
         chartInstance.options.scales.y.max = computeDynamicYMax(weeklyRecords);
-        chartInstance.update('none');
       }
     } else {
       const firstDate = uniqueDates[0];
@@ -1496,11 +1523,14 @@
         chartInstance.options.scales.x.min = startMs;
         chartInstance.options.scales.x.max = endMs;
         chartInstance.options.scales.y.max = computeDynamicYMax(allRecords);
-        chartInstance.update('none');
       }
     }
 
     document.getElementById('reportMainTitle').innerText = reportTitle;
+
+    // 인쇄 직전 차트 캔버스들을 용지 너비에 맞춰 강제 리사이징
+    if (chartInstance) chartInstance.resize();
+    if (weightChartInstance) weightChartInstance.resize();
 
     setTimeout(() => {
       window.print();
